@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Math Toolkit — GCD/LCM & More</title>
+<style>
+  :root{
+    --bg:#0b0f14;          /* Deep charcoal */
+    --panel:#11161d;       /* Card/Sidebar */
+    --muted:#9fb0c3;       /* Secondary text */
+    --text:#e8f0f7;        /* Primary text */
+    --accent:#00e08a;      /* Teal/Green */
+    --accent-2:#3bc6ff;    /* Blue accent */
+    --danger:#ff5d5d;      /* Error */
+    --radius:14px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#0a0e13,#0b0f14 30%, #0a0f12 100%);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .app{display:grid;grid-template-columns:280px 1fr;height:100vh;}
+  /* Sidebar */
+  .sidebar{background:linear-gradient(180deg,#0f141a,#0b0f14);border-right:1px solid rgba(255,255,255,.06);padding:18px;overflow:auto}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.3px}
+  .brand .logo{width:34px;height:34px;border-radius:10px;background:radial-gradient(circle at 30% 30%, var(--accent), #077b52);display:grid;place-items:center;box-shadow:0 8px 20px rgba(0,224,138,.25)}
+  .brand small{color:var(--muted);font-weight:600}
+  .search{margin:14px 0 10px;position:relative}
+  .search input{width:100%;padding:12px 12px 12px 36px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:#0f141a;color:var(--text);outline:none}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.6}
+  .menu{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .menu button{all:unset;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--muted);cursor:pointer}
+  .menu button:hover{background:rgba(255,255,255,.06);color:var(--text)}
+  .menu button.active{background:linear-gradient(90deg,rgba(0,224,138,.15),rgba(59,198,255,.10));color:var(--text);border:1px solid rgba(0,224,138,.35)}
+  .menu .tag{margin-left:auto;background:rgba(255,255,255,.08);color:var(--text);padding:2px 8px;border-radius:999px;font-size:11px}
+
+  /* Main */
+  .main{padding:22px 24px;overflow:auto}
+  .header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .title{font-size:22px;font-weight:800;letter-spacing:.2px}
+  .subtitle{color:var(--muted)}
+  .card{background:linear-gradient(180deg,#11161d,#0e1319);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .tool{padding:18px}
+  .form{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+  .field{grid-column: span 6}
+  .field.full{grid-column:1/-1}
+  label{display:block;margin:4px 0 8px;color:var(--muted);font-size:13px}
+  input[type="text"], input[type="number"]{width:100%;padding:12px;border-radius:10px;background:#0f141a;border:1px solid rgba(255,255,255,.08);color:var(--text);outline:none}
+  .actions{display:flex;gap:10px;margin-top:10px}
+  .btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#041215}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--text)}
+  .btn:active{transform:translateY(1px)}
+  .result{margin-top:16px;padding:14px;border-radius:12px;background:rgba(0,224,138,.06);border:1px solid rgba(0,224,138,.25)}
+  .result h3{margin:0 0 8px 0}
+  .muted{color:var(--muted)}
+  .error{color:#ffdada;background:rgba(255,93,93,.08);border:1px solid rgba(255,93,93,.25);padding:10px;border-radius:10px}
+  .footer{margin-top:16px;padding:14px;border-top:1px dashed rgba(255,255,255,.08);color:var(--muted);font-size:12px}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width: 900px){
+    .app{grid-template-columns:1fr}
+    .sidebar{grid-row:2}
+    .main{grid-row:1}
+    .form{grid-template-columns:1fr}
+    .field{grid-column:1/-1}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">⚙️</div>
+        <div>
+          <div>Math Toolkit</div>
+          <small>Quick number utilities</small>
+        </div>
+      </div>
+
+      <div class="search">
+        <input id="filter" type="text" placeholder="Filter operations…" />
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.3-4.3M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z" stroke="currentColor" stroke-width="2"/></svg>
+      </div>
+
+      <div id="menu" class="menu"></div>
+      <div class="footer">Tip: For LCM/GCD of many numbers, enter a comma‑separated list like <b>12, 18, 30</b>.</div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <div class="header">
+        <div>
+          <div class="title" id="toolTitle">Welcome 👋</div>
+          <div class="subtitle" id="toolSubtitle">Pick an operation from the left to get started.</div>
+        </div>
+      </div>
+
+      <section class="card tool" id="tool"></section>
+    </main>
+  </div>
+
+<script>
+  // ---------- Helper Utilities ----------
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const byId = id => document.getElementById(id);
+  const toBigInts = (arr) => arr.map(v => BigInt(v));
+  const parseList = (str) => str.split(/[,\s]+/).filter(Boolean);
+
+  function gcdTwo(a,b){ a = a<0n? -a : a; b = b<0n? -b : b; while(b){ [a,b] = [b, a % b]; } return a; }
+  function lcmTwo(a,b){ if(a===0n||b===0n) return 0n; return (a / gcdTwo(a,b)) * b; }
+  function gcdList(nums){ return nums.reduce((g, n) => gcdTwo(g,n)); }
+  function lcmList(nums){ return nums.reduce((l, n) => lcmTwo(l,n)); }
+
+  function isPrimeBig(n){
+    if(n < 2n) return false; if(n%2n===0n) return n===2n; if(n%3n===0n) return n===3n;
+    let i=5n, w=2n; while(i*i <= n){ if(n%i===0n) return false; i+=w; w=6n-w; } return true;
+  }
+
+  function factorsBig(n){ n = n<0n? -n : n; if(n===0n) return [0n]; const f=[]; for(let i=1n;i*i<=n;i++) if(n%i===0n){ f.push(i); if(i*i!==n) f.push(n/i); } return f.sort((a,b)=> (a<b?-1:1)); }
+
+  function factorialBig(n){ if(n<0n) throw new Error('n must be ≥ 0'); let r=1n; for(let i=2n;i<=n;i++) r*=i; return r; }
+
+  function nCrBig(n,r){ if(r<0n||n<0n||r>n) throw new Error('Require 0 ≤ r ≤ n'); r = r>n-r ? n-r : r; let num=1n, den=1n; for(let i=1n;i<=r;i++){ num*= (n - r + i); den*= i; } return num/den; }
+  function nPrBig(n,r){ if(r<0n||n<0n||r>n) throw new Error('Require 0 ≤ r ≤ n'); let res=1n; for(let i=0n;i<r;i++) res*= (n-i); return res; }
+
+  function powBig(base,exp){ if(exp<0n) throw new Error('Exponent must be ≥ 0'); let res=1n; let b=base; let e=exp; while(e>0n){ if(e&1n) res*=b; b*=b; e>>=1n; } return res; }
+
+  // ---------- Operation Registry ----------
+  const OPS = [
+    {
+      id:'gcd', name:'GCD / HCF', tag:'Integers',
+      subtitle:'Greatest Common Divisor of two or more integers',
+      fields:[{key:'nums', label:'Numbers (comma separated)', placeholder:'e.g., 84, 36, 24'}],
+      run:(vals)=>{ const list = parseList(vals.nums); if(list.length<2) throw 'Enter at least two integers'; const nums = toBigInts(list); return gcdList(nums) + ''; }
+    },
+    {
+      id:'lcm', name:'LCM', tag:'Integers',
+      subtitle:'Least Common Multiple of two or more integers',
+      fields:[{key:'nums', label:'Numbers (comma separated)', placeholder:'e.g., 12, 18, 30'}],
+      run:(vals)=>{ const list = parseList(vals.nums); if(list.length<2) throw 'Enter at least two integers'; const nums = toBigInts(list); return lcmList(nums) + ''; }
+    },
+    {
+      id:'prime', name:'Prime Check', tag:'Number',
+      subtitle:'Check whether a number is prime',
+      fields:[{key:'n', label:'Number', placeholder:'e.g., 97'}],
+      run:(v)=>{ const n = BigInt(v.n); return isPrimeBig(n)? `${n} is PRIME` : `${n} is NOT prime`; }
+    },
+    {
+      id:'factors', name:'Factors', tag:'Number',
+      subtitle:'List all positive factors of an integer',
+      fields:[{key:'n', label:'Number', placeholder:'e.g., 84'}],
+      run:(v)=>{ const n = BigInt(v.n); const f = factorsBig(n); return f.join(', '); }
+    },
+    {
+      id:'factorial', name:'Factorial (n!)', tag:'Combinatorics',
+      subtitle:'Compute factorial n!',
+      fields:[{key:'n', label:'n (0…500 recommended)', placeholder:'e.g., 25'}],
+      run:(v)=>{ const n = BigInt(v.n); if(n<0n) throw 'n must be ≥ 0'; return factorialBig(n).toString(); }
+    },
+    {
+      id:'nCr', name:'nCr (Combinations)', tag:'Combinatorics',
+      subtitle:'Number of ways to choose r from n',
+      fields:[{key:'n', label:'n', placeholder:'e.g., 50'},{key:'r', label:'r', placeholder:'e.g., 6'}],
+      run:(v)=>{ const n=BigInt(v.n), r=BigInt(v.r); return nCrBig(n,r).toString(); }
+    },
+    {
+      id:'nPr', name:'nPr (Permutations)', tag:'Combinatorics',
+      subtitle:'Arrangements of r from n',
+      fields:[{key:'n', label:'n', placeholder:'e.g., 10'},{key:'r', label:'r', placeholder:'e.g., 3'}],
+      run:(v)=>{ const n=BigInt(v.n), r=BigInt(v.r); return nPrBig(n,r).toString(); }
+    },
+    {
+      id:'power', name:'Power (b^e)', tag:'Number',
+      subtitle:'Integer power with fast exponentiation',
+      fields:[{key:'b', label:'Base (integer)', placeholder:'e.g., 7'},{key:'e', label:'Exponent (≥ 0)', placeholder:'e.g., 8'}],
+      run:(v)=>{ const b=BigInt(v.b), e=BigInt(v.e); if(e<0n) throw 'Exponent must be ≥ 0'; return powBig(b,e).toString(); }
+    },
+    {
+      id:'fibo', name:'Fibonacci (n-th)', tag:'Sequence',
+      subtitle:'Compute the n-th Fibonacci number (0-indexed)',
+      fields:[{key:'n', label:'n (0…200 recommended)', placeholder:'e.g., 30'}],
+      run:(v)=>{ let n = BigInt(v.n); if(n<0n) throw 'n must be ≥ 0'; let a=0n,b=1n; while(n-->0n){ [a,b]=[b,a+b]; } return a.toString(); }
+    },
+    {
+      id:'sumdigits', name:'Sum of Digits', tag:'Digits',
+      subtitle:'Sum of decimal digits of an integer',
+      fields:[{key:'n', label:'Number', placeholder:'e.g., 987654'}],
+      run:(v)=>{ const s = v.n.replace(/[^0-9-]/g,''); const neg = s.startsWith('-'); const sum = s.replace('-','').split('').reduce((t,d)=>t+Number(d),0); return (neg?'-':'' ) + sum; }
+    },
+    {
+      id:'reverse', name:'Reverse Digits', tag:'Digits',
+      subtitle:'Reverse decimal digits of an integer',
+      fields:[{key:'n', label:'Number', placeholder:'e.g., 12045'}],
+      run:(v)=>{ const s = v.n.replace(/[^0-9-]/g,''); const neg = s.startsWith('-'); const r = s.replace('-','').split('').reverse().join(''); return (neg?'-':'') + r; }
+    },
+    {
+      id:'simplify', name:'Simplify Fraction', tag:'Fractions',
+      subtitle:'Reduce a fraction to lowest terms',
+      fields:[{key:'p', label:'Numerator (integer)', placeholder:'e.g., 462'},{key:'q', label:'Denominator (≠0)', placeholder:'e.g., 1078'}],
+      run:(v)=>{ let p=BigInt(v.p), q=BigInt(v.q); if(q===0n) throw 'Denominator cannot be 0'; let g=gcdTwo(p,q); p/=g; q/=g; if(q<0n){ p=-p; q=-q; } return `${p}/${q}`; }
+    },
+    {
+      id:'lcmrange', name:'LCM of Range', tag:'Integers',
+      subtitle:'Least common multiple of all integers in [a, b]',
+      fields:[{key:'a', label:'Start a', placeholder:'e.g., 1'},{key:'b', label:'End b (≥ a)', placeholder:'e.g., 10'}],
+      run:(v)=>{ let a=BigInt(v.a), b=BigInt(v.b); if(b<a) throw 'Require b ≥ a'; let L=1n; for(let x=a;x<=b;x++) L=lcmTwo(L,x); return L.toString(); }
+    }
+  ];
+
+  // ---------- UI Rendering ----------
+  const menu = byId('menu');
+  const tool = byId('tool');
+  const toolTitle = byId('toolTitle');
+  const toolSubtitle = byId('toolSubtitle');
+
+  function renderMenu(list=OPS){
+    menu.innerHTML = '';
+    list.forEach(op=>{
+      const btn = document.createElement('button');
+      btn.dataset.id = op.id;
+      btn.innerHTML = `<span>➤</span><span>${op.name}</span><span class="tag">${op.tag}</span>`;
+      btn.onclick = ()=> selectOp(op.id);
+      menu.appendChild(btn);
+    });
+  }
+
+  function selectOp(id){
+    const op = OPS.find(o=>o.id===id);
+    if(!op) return;
+    $$('.menu button').forEach(b=> b.classList.toggle('active', b.dataset.id===id));
+    toolTitle.textContent = op.name;
+    toolSubtitle.textContent = op.subtitle;
+
+    // Build form
+    const form = document.createElement('form');
+    form.className = 'form';
+    op.fields.forEach((f)=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'field' + (op.fields.length===1 ? ' full' : '');
+      wrap.innerHTML = `<label for="${op.id}-${f.key}">${f.label}</label>
+        <input id="${op.id}-${f.key}" name="${f.key}" type="text" placeholder="${f.placeholder||''}" />`;
+      form.appendChild(wrap);
+    });
+
+    const act = document.createElement('div');
+    act.className = 'field full';
+    act.innerHTML = `<div class="actions">
+      <button class="btn primary" type="submit">Compute</button>
+      <button class="btn ghost" type="reset">Reset</button>
+    </div>`;
+    form.appendChild(act);
+
+    const result = document.createElement('div');
+    result.className = 'field full';
+    result.innerHTML = `<div class="result" id="resultBox"><h3>Result</h3><div id="resultText" class="muted">—</div></div>`;
+    form.appendChild(result);
+
+    tool.innerHTML = '';
+    tool.appendChild(form);
+
+    form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const vals = Object.fromEntries(new FormData(form).entries());
+      const out = byId('resultText');
+      try{
+        const res = op.run(vals);
+        out.textContent = res;
+        out.classList.remove('muted');
+      }catch(err){
+        out.innerHTML = `<div class="error">${err}</div>`;
+      }
+    });
+
+    form.addEventListener('reset', ()=>{
+      byId('resultText').textContent = '—';
+      byId('resultText').classList.add('muted');
+    });
+
+    // Autofocus first input
+    setTimeout(()=> $('input', form)?.focus(), 0);
+  }
+
+  // Filter
+  byId('filter').addEventListener('input', (e)=>{
+    const q = e.target.value.toLowerCase().trim();
+    const filtered = OPS.filter(op => op.name.toLowerCase().includes(q) || op.tag.toLowerCase().includes(q) || op.id.includes(q));
+    renderMenu(filtered);
+  });
+
+  // Init
+  renderMenu();
+  selectOp('gcd');
+</script>
+</body>
+</html>
